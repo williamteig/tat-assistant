@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Download all transcripts from a Vimeo account as .txt files."""
+"""Download all transcripts from a Vimeo folder as .txt files."""
 
 import os
 import re
@@ -59,27 +59,54 @@ def strip_vtt_formatting(text: str) -> str:
     return "\n".join(result)
 
 
-def get_all_videos() -> list[dict]:
-    """Fetch all videos from the authenticated account, handling pagination."""
-    videos = []
+def extract_folder_id(url: str) -> str:
+    """Extract the folder ID from a Vimeo folder URL.
+
+    Supports formats like:
+      https://vimeo.com/manage/folders/12345678
+      https://vimeo.com/showcase/12345678
+    """
+    match = re.search(r"/(?:folders|showcase)/(\d+)", url)
+    if not match:
+        # Maybe they just passed a numeric ID directly
+        if re.fullmatch(r"\d+", url.strip()):
+            return url.strip()
+        print(f"Error: could not extract a folder ID from '{url}'")
+        print("Expected a URL like: https://vimeo.com/manage/folders/12345678")
+        sys.exit(1)
+    return match.group(1)
+
+
+def paginate(path: str, params: dict | None = None) -> list[dict]:
+    """Fetch all pages from a Vimeo API endpoint."""
+    results = []
     page = 1
     per_page = 100
+    base_params = dict(params or {})
     while True:
-        data = api_get("/me/videos", {"per_page": per_page, "page": page})
+        data = api_get(path, {**base_params, "per_page": per_page, "page": page})
         if "data" not in data:
-            print(f"Error fetching videos: {data}")
+            print(f"Error fetching {path}: {data}")
             sys.exit(1)
-        videos.extend(data["data"])
-        total = data.get("total", 0)
-        print(f"  Fetched page {page} — {len(videos)}/{total} videos")
+        results.extend(data["data"])
         if data["paging"]["next"] is None:
             break
         page += 1
-    return videos
+    return results
 
 
-def download_transcript(video: dict) -> bool:
-    """Download the transcript for a single video. Returns True if saved."""
+def get_folder_info(folder_id: str) -> dict:
+    """Fetch metadata for a single folder."""
+    return api_get(f"/me/projects/{folder_id}")
+
+
+def get_videos_in_folder(folder_id: str) -> list[dict]:
+    """Fetch all videos inside a Vimeo folder."""
+    return paginate(f"/me/projects/{folder_id}/videos")
+
+
+def download_transcript(video: dict, target_dir: str) -> bool:
+    """Download the transcript for a single video into target_dir. Returns True if saved."""
     video_uri = video["uri"]  # e.g. /videos/123456
     title = video.get("name", "untitled")
 
@@ -108,12 +135,12 @@ def download_transcript(video: dict) -> bool:
         return False
 
     filename = sanitize_filename(title) + ".txt"
-    filepath = os.path.join(TRANSCRIPTS_DIR, filename)
+    filepath = os.path.join(target_dir, filename)
 
     # Avoid overwriting — append a number if file exists
     counter = 1
     while os.path.exists(filepath):
-        filepath = os.path.join(TRANSCRIPTS_DIR, f"{sanitize_filename(title)}_{counter}.txt")
+        filepath = os.path.join(target_dir, f"{sanitize_filename(title)}_{counter}.txt")
         counter += 1
 
     with open(filepath, "w", encoding="utf-8") as f:
@@ -127,6 +154,13 @@ def main():
         print("Error: VIMEO_ACCESS_TOKEN not set. Copy .env.example to .env and add your token.")
         sys.exit(1)
 
+    if len(sys.argv) < 2:
+        print("Usage: python download_transcripts.py <vimeo-folder-url>")
+        print("  e.g. python download_transcripts.py https://vimeo.com/manage/folders/12345678")
+        sys.exit(1)
+
+    folder_id = extract_folder_id(sys.argv[1])
+
     # Verify credentials
     me = api_get("/me")
     if "name" not in me:
@@ -134,11 +168,17 @@ def main():
         sys.exit(1)
     print(f"Authenticated as: {me['name']}")
 
-    os.makedirs(TRANSCRIPTS_DIR, exist_ok=True)
+    # Get folder name from API
+    folder_info = get_folder_info(folder_id)
+    folder_name = sanitize_filename(folder_info.get("name", folder_id))
+    print(f"Folder: {folder_name}")
 
-    print("\nFetching video list...")
-    videos = get_all_videos()
-    print(f"\nFound {len(videos)} videos. Downloading transcripts...\n")
+    target_dir = os.path.join(TRANSCRIPTS_DIR, folder_name)
+    os.makedirs(target_dir, exist_ok=True)
+
+    print("Fetching videos...")
+    videos = get_videos_in_folder(folder_id)
+    print(f"Found {len(videos)} video(s). Downloading transcripts...\n")
 
     downloaded = 0
     skipped = 0
@@ -146,14 +186,14 @@ def main():
         title = video.get("name", "untitled")
         sys.stdout.write(f"[{i}/{len(videos)}] {title[:60]}... ")
         sys.stdout.flush()
-        if download_transcript(video):
+        if download_transcript(video, target_dir):
             print("OK")
             downloaded += 1
         else:
             print("no transcript")
             skipped += 1
 
-    print(f"\nDone! {downloaded} transcripts saved to {TRANSCRIPTS_DIR}/")
+    print(f"\nDone! {downloaded} transcripts saved to {target_dir}/")
     if skipped:
         print(f"({skipped} videos had no transcript)")
 
