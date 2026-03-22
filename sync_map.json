@@ -1,0 +1,51 @@
+{
+  "database_id": "b3b39004-e547-49df-b0f2-3c5e11aa35f6",
+  "data_source_id": "8451037c-b805-4f90-8980-93168bbdb908",
+  "files": {
+    "business/value-ladder.md": {
+      "notion_page_id": "32b2204c-5659-81e1-951d-c3b7e2ac1ffa",
+      "notion_page_url": "https://www.notion.so/32b2204c565981e1951dc3b7e2ac1ffa",
+      "last_synced": null
+    },
+    "business/support-system.md": {
+      "notion_page_id": "32b2204c-5659-810b-9519-eb220d93e19f",
+      "notion_page_url": "https://www.notion.so/32b2204c5659810b9519eb220d93e19f",
+      "last_synced": null
+    },
+    "business/team.md": {
+      "notion_page_id": "32b2204c-5659-8173-a30a-f1e2e44c8cd0",
+      "notion_page_url": "https://www.notion.so/32b2204c56598173a30af1e2e44c8cd0",
+      "last_synced": null
+    },
+    "business/content-strategy.md": {
+      "notion_page_id": "32b2204c-5659-816a-add6-e6fe0b8a322c",
+      "notion_page_url": "https://www.notion.so/32b2204c5659816aadd6e6fe0b8a322c",
+      "last_synced": null
+    },
+    "business/membership-site.md": {
+      "notion_page_id": "32b2204c-5659-8114-9a83-fc03e563c0d9",
+      "notion_page_url": "https://www.notion.so/32b2204c565981149a83fc03e563c0d9",
+      "last_synced": null
+    },
+    "business/brand-messaging.md": {
+      "notion_page_id": "32b2204c-5659-8153-b49d-c1e0306b4f86",
+      "notion_page_url": "https://www.notion.so/32b2204c56598153b49dc1e0306b4f86",
+      "last_synced": null
+    },
+    "business/revenue-model.md": {
+      "notion_page_id": "32b2204c-5659-8120-8e99-f277c24f9698",
+      "notion_page_url": "https://www.notion.so/32b2204c565981208e99f277c24f9698",
+      "last_synced": null
+    },
+    "business/course-curriculum.md": {
+      "notion_page_id": "32b2204c-5659-8194-9e91-d2a4cd7b8508",
+      "notion_page_url": "https://www.notion.so/32b2204c565981949e91d2a4cd7b8508",
+      "last_synced": null
+    },
+    "business/launch-campaigns.md": {
+      "notion_page_id": "32b2204c-5659-8154-85ec-d1386b6c7ebd",
+      "notion_page_url": "https://www.notion.so/32b2204c5659815485ecd1386b6c7ebd",
+      "last_synced": null
+    }
+  }
+}

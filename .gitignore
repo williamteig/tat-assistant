@@ -3,3 +3,5 @@ transcripts/
 __pycache__/
 *.pyc
 .venv/
+.DS_Store
+tools/vimeo/transcripts/

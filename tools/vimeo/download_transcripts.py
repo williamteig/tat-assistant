@@ -66,7 +66,7 @@ def extract_folder_id(url: str) -> str:
       https://vimeo.com/manage/folders/12345678
       https://vimeo.com/showcase/12345678
     """
-    match = re.search(r"/(?:folders|showcase)/(\d+)", url)
+    match = re.search(r"/(?:folders?|showcase)/(\d+)", url)
     if not match:
         # Maybe they just passed a numeric ID directly
         if re.fullmatch(r"\d+", url.strip()):
