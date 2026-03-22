@@ -1,7 +1,33 @@
+# Environment — NEVER commit secrets
 .env
-transcripts/
+
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+*.pyo
 .venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+
+# macOS
 .DS_Store
+.AppleDouble
+.LSOverride
+
+# Generated knowledge docs (committed by CI bot, not manually)
+# Uncomment the line below if you want to keep knowledge/ out of git entirely
+# knowledge/
+
+# Transcript flat files (legacy — now stored in Supabase)
 tools/vimeo/transcripts/
+
+# Social data flat files (legacy)
+tools/social/social_data/
+
+# IDE
+.vscode/
+.idea/
+*.swp

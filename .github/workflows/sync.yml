@@ -1,0 +1,85 @@
+name: TAT Knowledge Sync
+
+on:
+  # Run every 6 hours automatically
+  schedule:
+    - cron: "0 */6 * * *"
+
+  # Allow manual trigger from GitHub Actions tab
+  workflow_dispatch:
+    inputs:
+      full_refetch:
+        description: "Full re-fetch (ignore watermarks)?"
+        required: false
+        default: "false"
+        type: choice
+        options: ["false", "true"]
+      skip_upload:
+        description: "Skip Anthropic upload (generate docs only)?"
+        required: false
+        default: "false"
+        type: choice
+        options: ["false", "true"]
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run sync pipeline
+        env:
+          # ── Supabase ──────────────────────────────────────────────
+          SUPABASE_URL:             ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY:     ${{ secrets.SUPABASE_SERVICE_KEY }}
+          # ── Anthropic ───────────────────────────────────────────
+          ANTHROPIC_API_KEY:        ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_PROJECT_ID:        ${{ secrets.CLAUDE_PROJECT_ID }}
+          # ── Vimeo ─────────────────────────────────────────────────
+          VIMEO_ACCESS_TOKEN:       ${{ secrets.VIMEO_ACCESS_TOKEN }}
+          # ── Circle ────────────────────────────────────────────────
+          CIRCLE_API_TOKEN:         ${{ secrets.CIRCLE_API_TOKET }}
+          CIRCLE_COMMUNITY_SLUG:    ${{ secrets.CIRCLE_COMMUNITY_SLUG }}
+          CIRCLE_SPACE_IDS:         ${{ secrets.CIRCLE_SPACE_IDS }}
+          # ── Social ────────────────────────────────────────────────
+          INSTAGRAM_ACCOUNT_ID:     ${{ secrets.INSTAGRAM_ACCOUNT_ID }}
+          INSTAGRAM_ACCESS_TOKEN:   ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
+          FACEBOOK_PAGE_ID:         ${{ secrets.FACEBOOK_PAGE_ID }}
+          FACEBOOK_ACCESS_TOKEN:    ${{ secrets.FACEBOOK_ACCESS_TOKEN }}
+          YOUTUBE_API_KEY:          ${{ secrets.YOUTUBE_API_KEY }}
+          YOUTUBE_CHANNEL_ID:       ${{ secrets.YOUTUBE_CHANNEL_ID }}
+          TIKTOK_ACCESS_TOKEN:      ${{ secrets.TIKTOK_ACCESS_TOKET }}
+        run: |
+          ARGS=""
+          if [ "${{ github.event.inputs.full_refetch }}" = "true" ]; then
+            ARGS="$ARGS --full"
+          fi
+          if [ "${{ github.event.inputs.skip_upload }}" = "true" ]; then
+            ARGS="$ARGS --skip-upload"
+          fi
+          python run_sync.py $ARGS
+
+      - name: Commit updated knowledge docs
+        run: |
+          git config user.name  "TAT Sync Bot"
+          git config user.email "bot@theauditiontechnique.com"
+          git add knowledge/
+          # Only commit if something changed
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: auto-update knowledge docs [skip ci]"
+            git push
+          else
+            echo "No changes to knowledge docs — skipping commit"
+          fi
