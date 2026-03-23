@@ -28,8 +28,9 @@ load_dotenv()
 
 # ─── Config ───────────────────────────────────────────────────────────────────
 
-ACCESS_TOKEN = os.getenv("VIMEO_ACCESS_TOKEN")
-API_BASE     = "https://api.vimeo.com"
+ACCESS_TOKEN  = os.getenv("VIMEO_ACCESS_TOKEN")
+FOLDER_URL    = os.getenv("VIMEO_FOLDER_URL", "").strip()
+API_BASE      = "https://api.vimeo.com"
 
 # ─── Vimeo API helpers ────────────────────────────────────────────────────────
 
@@ -68,19 +69,70 @@ def strip_vtt(text: str) -> str:
     return "\n".join(result)
 
 
-def get_all_videos() -> list[dict]:
+def get_folder_id(folder_url: str) -> str | None:
+    """Extract the numeric folder ID from a Vimeo folder URL."""
+    m = re.search(r"/folder/(\d+)", folder_url)
+    return m.group(1) if m else None
+
+
+def get_videos_from_folder(folder_id: str) -> list[dict]:
+    """Fetch all videos directly inside a folder."""
     videos, page = [], 1
     while True:
-        data = api_get("/me/videos", {"per_page": 100, "page": page,
-                                       "fields": "uri,name,duration,link,parent_folder"})
+        data = api_get(f"/me/projects/{folder_id}/videos",
+                       {"per_page": 100, "page": page,
+                        "fields": "uri,name,duration,link,parent_folder"})
         if "data" not in data:
-            print(f"[vimeo] Error fetching videos: {data}")
-            sys.exit(1)
+            break
         videos.extend(data["data"])
-        print(f"  Page {page} — {len(videos)}/{data.get('total', '?')} videos")
         if not data["paging"].get("next"):
             break
         page += 1
+    return videos
+
+
+def get_subfolders(folder_id: str) -> list[dict]:
+    """Return sub-folders of a given folder."""
+    try:
+        data = api_get(f"/me/projects/{folder_id}/items",
+                       {"per_page": 100, "fields": "type,folder"})
+        return [item["folder"] for item in data.get("data", [])
+                if item.get("type") == "folder" and item.get("folder")]
+    except Exception:
+        return []
+
+
+def get_all_videos() -> list[dict]:
+    folder_id = get_folder_id(FOLDER_URL) if FOLDER_URL else None
+    if not folder_id:
+        # No folder set — fetch all videos on the account
+        videos, page = [], 1
+        while True:
+            data = api_get("/me/videos", {"per_page": 100, "page": page,
+                                          "fields": "uri,name,duration,link,parent_folder"})
+            if "data" not in data:
+                print(f"[vimeo] Error fetching videos: {data}")
+                sys.exit(1)
+            videos.extend(data["data"])
+            print(f"  Page {page} — {len(videos)}/{data.get('total', '?')} videos")
+            if not data["paging"].get("next"):
+                break
+            page += 1
+        return videos
+
+    # Folder set — fetch videos from the folder and all its sub-folders
+    print(f"[vimeo] Restricting to folder ID {folder_id} (and sub-folders)")
+    videos = get_videos_from_folder(folder_id)
+    subfolders = get_subfolders(folder_id)
+    if subfolders:
+        print(f"[vimeo] Found {len(subfolders)} sub-folder(s) — fetching videos from each")
+        for sf in subfolders:
+            sf_id   = sf["uri"].rstrip("/").split("/")[-1]
+            sf_name = sf.get("name", sf_id)
+            sf_vids = get_videos_from_folder(sf_id)
+            print(f"  {sf_name}: {len(sf_vids)} video(s)")
+            videos.extend(sf_vids)
+    print(f"[vimeo] Total: {len(videos)} videos across folder + sub-folders")
     return videos
 
 
@@ -157,7 +209,7 @@ def main():
         title    = video.get("name", "untitled")
         category = get_category(video)
 
-        sys.stdout.write(f"[{i}/{len(vheeos)}] {title[:55]:<55} ")
+        sys.stdout.write(f"[{i}/{len(videos)}] {title[:55]:<55} ")
         sys.stdout.flush()
 
         if args.new_only and vid_id in existing_ids:
