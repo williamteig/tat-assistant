@@ -11,10 +11,14 @@ CREATE TABLE IF NOT EXISTS transcripts (
     content         TEXT NOT NULL,              -- raw transcript text
     duration_secs   INTEGER,
     vimeo_url       TEXT,
+    summary         TEXT,                           -- AI-generated summary (cached)
     fetched_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     in_knowledge    BOOLEAN NOT NULL DEFAULT FALSE  -- TRUE once included in latest upload
 );
+
+-- Migration: run this if the table already exists without the summary column
+-- ALTER TABLE transcripts ADD COLUMN IF NOT EXISTS summary TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_transcripts_category ON transcripts(category);
 CREATE INDEX IF NOT EXISTS idx_transcripts_in_knowledge ON transcripts(in_knowledge);

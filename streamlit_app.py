@@ -63,7 +63,7 @@ If the answer isn't in the provided documents, say so rather than making somethi
 
 # ─── Tabs ─────────────────────────────────────────────────────────────────────
 
-tab_chat, tab_data = st.tabs(["💬  Chat", "📊  Data"])
+tab_chat, tab_vimeo, tab_data = st.tabs(["💬  Chat", "🎬  Vimeo Library", "📊  Data"])
 
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 1 — CHAT
@@ -147,7 +147,169 @@ with tab_chat:
             st.rerun()
 
 # ══════════════════════════════════════════════════════════════════════════════
-# TAB 2 — DATA VIEWER
+# TAB 2 — VIMEO LIBRARY
+# ══════════════════════════════════════════════════════════════════════════════
+
+CATEGORY_ICONS = {
+    "Short Video Tips":              "💡",
+    "TAT COURSES":                   "🎓",
+    "Livestreams & Workshops":       "🎙️",
+    "'Behind Closed Door' inside info": "🔒",
+    "Testimonials":                  "⭐",
+}
+
+def fmt_duration(secs: int | None) -> str:
+    if not secs:
+        return ""
+    m, s = divmod(secs, 60)
+    return f"{m}m {s:02d}s"
+
+def generate_summary(video_id: str, title: str, content: str) -> str:
+    """Call Claude to summarise a transcript and cache in Supabase."""
+    client = get_anthropic()
+    resp = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=200,
+        messages=[{
+            "role": "user",
+            "content": (
+                f"Video title: {title}\n\nTranscript:\n{content[:6000]}\n\n"
+                "In 2–3 sentences, summarise the core concept or technique this video teaches actors. "
+                "Be specific and practical."
+            ),
+        }],
+    )
+    summary = resp.content[0].text.strip()
+    # Cache in Supabase
+    try:
+        get_db().table("transcripts").update({"summary": summary}).eq("id", video_id).execute()
+    except Exception:
+        pass
+    return summary
+
+@st.cache_data(ttl=60)
+def load_vimeo_library() -> list[dict]:
+    """Load all transcript metadata (no content) sorted by category then title."""
+    sb = get_db()
+    resp = sb.table("transcripts")\
+        .select("id,title,category,duration_secs,vimeo_url,summary")\
+        .order("category")\
+        .order("title")\
+        .execute()
+    return resp.data or []
+
+with tab_vimeo:
+    st.title("Vimeo Library")
+    st.caption("Browse all video content — transcripts, AI summaries, and links.")
+
+    try:
+        all_videos = load_vimeo_library()
+
+        if not all_videos:
+            st.info("No videos yet. Run the Vimeo sync: `.venv/bin/python3 run_sync.py --only vimeo`")
+        else:
+            # ── Search ────────────────────────────────────────────────────────
+            search = st.text_input("🔍  Search by title", placeholder="e.g. indicating, character, self tape...")
+
+            # ── Layout: nav col + content col ─────────────────────────────────
+            nav_col, content_col = st.columns([1, 3], gap="large")
+
+            # Build category list with counts
+            from collections import Counter
+            cat_counts = Counter(v["category"] for v in all_videos)
+            categories = ["All"] + sorted(cat_counts.keys(), key=lambda c: -cat_counts[c])
+            cat_labels = {
+                c: f"{CATEGORY_ICONS.get(c, '📁')}  {c}  ({cat_counts[c]})"
+                for c in categories[1:]
+            }
+            cat_labels["All"] = f"📹  All videos  ({len(all_videos)})"
+
+            with nav_col:
+                st.markdown("### Browse by category")
+                selected_cat = st.radio(
+                    "Category",
+                    categories,
+                    format_func=lambda c: cat_labels[c],
+                    label_visibility="collapsed",
+                )
+
+            # Filter videos
+            filtered = all_videos
+            if selected_cat != "All":
+                filtered = [v for v in filtered if v["category"] == selected_cat]
+            if search:
+                q = search.lower()
+                filtered = [v for v in filtered if q in v["title"].lower()]
+
+            with content_col:
+                st.markdown(f"**{len(filtered)} video{'s' if len(filtered) != 1 else ''}**")
+
+                if not filtered:
+                    st.info("No videos match your search.")
+                else:
+                    for video in filtered:
+                        icon     = CATEGORY_ICONS.get(video["category"], "📁")
+                        duration = fmt_duration(video.get("duration_secs"))
+                        has_link = bool(video.get("vimeo_url"))
+
+                        with st.container(border=True):
+                            # ── Title row ──────────────────────────────────
+                            title_col, link_col = st.columns([5, 1])
+                            with title_col:
+                                st.markdown(f"#### {video['title']}")
+                                meta_parts = [f"{icon} {video['category']}"]
+                                if duration:
+                                    meta_parts.append(f"⏱ {duration}")
+                                st.caption("  ·  ".join(meta_parts))
+                            with link_col:
+                                if has_link:
+                                    st.link_button("▶ Vimeo", video["vimeo_url"])
+
+                            # ── AI Summary ─────────────────────────────────
+                            existing_summary = video.get("summary")
+                            if existing_summary:
+                                st.info(existing_summary)
+                            else:
+                                gen_col, _ = st.columns([2, 3])
+                                with gen_col:
+                                    if st.button("✨ Generate AI summary",
+                                                 key=f"sum_{video['id']}"):
+                                        with st.spinner("Summarising..."):
+                                            content_resp = get_db()\
+                                                .table("transcripts")\
+                                                .select("content")\
+                                                .eq("id", video["id"])\
+                                                .single()\
+                                                .execute()
+                                            summary = generate_summary(
+                                                video["id"],
+                                                video["title"],
+                                                content_resp.data["content"],
+                                            )
+                                        st.info(summary)
+                                        st.cache_data.clear()
+
+                            # ── Transcript expander ────────────────────────
+                            with st.expander("📄 View transcript"):
+                                content_resp = get_db()\
+                                    .table("transcripts")\
+                                    .select("content")\
+                                    .eq("id", video["id"])\
+                                    .single()\
+                                    .execute()
+                                st.text_area(
+                                    "Transcript",
+                                    content_resp.data["content"],
+                                    height=350,
+                                    key=f"tx_{video['id']}",
+                                    label_visibility="collapsed",
+                                )
+
+    except Exception as e:
+        st.error(f"Could not load Vimeo library: {e}")
+
+# ══════════════════════════════════════════════════════════════════════════════
+# TAB 3 — DATA VIEWER
 # ══════════════════════════════════════════════════════════════════════════════
 
 with tab_data:
