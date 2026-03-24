@@ -246,6 +246,8 @@ From social media and membership offering
 
 **41. Are there any notable case studies or outcomes from mentorship clients you can share?**
 
+Not at this stage
+
 >
 
 ---
@@ -253,6 +255,8 @@ From social media and membership offering
 ## 🔗 Cross-Segment — Value Ladder, Brand & Revenue
 
 **42. What's the intended journey — how does someone move from free content all the way to mentorship?**
+
+Everyone is meant to sign up to the membership as a first order operation. It is free to 
 
 >
 
@@ -285,5 +289,7 @@ From social media and membership offering
 >
 
 **50. Who else is involved in the business day-to-day — VA, community manager, editor, anyone?**
+
+We have a team of 
 
 >

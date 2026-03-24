@@ -10,12 +10,7 @@ How The Audition Technique creates and distributes content to grow the audience 
 ### Instagram
 - Post frequency:
 - Content types:
-- Primary CTA:
-
-### YouTube
-- Post frequency:
-- Content types:
-- Primary CTA:
+- Primary CTA: Join the membership
 
 ### Email / Newsletter
 - Frequency:

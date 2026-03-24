@@ -5,6 +5,50 @@ This file is intended to give full context when resuming work in Claude CLI or a
 
 ---
 
+## [0.3.0] — 2026-03-23/24
+
+### Streamlit Web Interface
+- Added `streamlit_app.py` with three tabs: Chat, Vimeo Library, Data Browser
+- **Chat tab** — sends user questions to Claude API with all knowledge docs attached via Files API (file IDs loaded from `claude_sync_log` in Supabase)
+- **Vimeo Library tab** — category nav, search, video cards with duration and Vimeo links, AI summaries generated on demand via Claude Haiku and cached in Supabase, full transcript viewer per video
+- **Data tab** — stats overview (transcript/Circle/social counts), browseable content with expandable rows
+- Added `streamlit>=1.32.0` to `requirements.txt`
+- Added `summary TEXT` column to `data/schema.sql` for cached AI summaries (migration: `ALTER TABLE transcripts ADD COLUMN IF NOT EXISTS summary TEXT;`)
+
+### Vimeo Pipeline Fixed
+- Fixed `tools/vimeo/fetch_transcripts.py` to recurse into sub-folders via `VIMEO_FOLDER_URL` (previously fetched 0 videos — the master folder contains sub-folders, not direct videos)
+- Fixed typo `vheeos` → `videos` that would have crashed the script on any run
+- 69 transcripts now fetched and stored in Supabase; 9 had no captions
+
+### Known Issue — Vimeo Folder/Category Mapping
+- The Vimeo API returns sub-folder names as categories (e.g. "Short Video Tips", "TAT COURSES") which do not match the original folder names used by the old `download_transcripts.py` (e.g. "Website Videos", "Livestreams")
+- The category system drawn from the Vimeo API is incorrect and needs reworking — the sub-folders in Vimeo do not reflect the intended content categories for the knowledge pipeline
+- **To fix going forwards:** audit the Vimeo folder structure, decide on canonical category names, and update `get_category()` in `fetch_transcripts.py` with a mapping or rename folders in Vimeo directly
+
+### Infrastructure
+- Fixed two typos in `.github/workflows/sync.yml`: `CIRCLE_API_TOKET` → `CIRCLE_API_TOKEN`, `TIKTOK_ACCESS_TOKET` → `TIKTOK_ACCESS_TOKEN`
+- Fixed encoding corruption in `.env.example` (social platform section was binary garbage — rewritten cleanly)
+- Added `CLAUDE.md` with commands, architecture overview, and run instructions
+- Added `plan.md` with full architecture, setup checklist, and roadmap
+- All real credentials moved to `.env` only; `.env.example` restored to placeholders after accidental commits
+- `VIMEO_FOLDER_URL` now set in `.env` to restrict fetcher to master folder `28680333`
+- Circle community slug corrected to `the-audition-technique` (was set to full URL)
+
+### Files Created
+- `streamlit_app.py` — Streamlit web interface
+- `CLAUDE.md` — technical guidance for developers and AI
+- `plan.md` — project plan, architecture diagram, setup status, roadmap
+- `business/video-content.md` — summary of all Vimeo content by folder (from transcripts)
+- `userinput/usertasks.md` — setup task checklist for credentials and first run
+- `userinput/whatcontentfromwhatplatforms.md` — content scope decisions per platform
+- `userinput/Data-visualization.md` — Vimeo folder structure for UI visualization planning
+
+### Pipeline Test
+- First successful end-to-end run: Vimeo → Supabase → generate knowledge docs → upload to Anthropic Files API
+- Files API confirmed working; clarified that Files API and Claude Projects are separate systems (files do not auto-appear in claude.ai Projects — must be uploaded manually via web UI or used programmatically via the Messages API)
+
+---
+
 ## [0.2.0] — 2026-03-22 (Cowork session)
 
 ### Project Renamed
