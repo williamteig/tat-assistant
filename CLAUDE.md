@@ -6,6 +6,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 TAT Assistant is an automated pipeline that pulls content from Vimeo, Circle, Instagram, Facebook, YouTube, and TikTok — stores it in Supabase — then consolidates it into Markdown knowledge documents uploaded to a Claude project via the Anthropic Files API. GitHub Actions runs the full pipeline every 6 hours.
 
+## Running the web interface
+
+```bash
+.venv/bin/streamlit run streamlit_app.py
+```
+
+Opens at http://localhost:8501 with two tabs:
+- **Chat** — ask questions answered from Greg's content
+- **Data** — browse all transcripts and posts in Supabase
+
 ## Running the pipeline
 
 ```bash

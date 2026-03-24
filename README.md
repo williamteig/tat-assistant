@@ -6,4 +6,6 @@ The app continuously pulls content from Vimeo (course and blog videos), Circle (
 
 The goal is simple: anyone on the TAT team should be able to ask the assistant a question about Greg's methodology, content, or community — and get an answer grounded in the real, current body of work.
 
+A Streamlit web interface (`streamlit_app.py`) provides a **chat assistant** backed by Greg's full content library, and a **data browser** to inspect all synced content. Run it locally with `.venv/bin/streamlit run streamlit_app.py`.
+
 For project architecture, setup status, and roadmap, see [plan.md](plan.md).
